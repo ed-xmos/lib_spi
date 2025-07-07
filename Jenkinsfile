@@ -2,6 +2,13 @@
 
 @Library('xmos_jenkins_shared_library@v0.39.0') _
 
+def clone_test_deps() {
+    dir("${WORKSPACE}") {
+        sh "git clone git@github.com:xmos/test_support"
+        sh "git -C test_support checkout v2.0.0"
+    }
+}
+
 getApproval()
 
 pipeline {
@@ -74,26 +81,28 @@ pipeline {
     }
 
 
-    //stage('Tests')
-    //{
-    //  steps {
-    //      withTools(params.TOOLS_VERSION) {
-    //        dir("${REPO}/tests") {
-    //          createVenv(reqFile: "requirements.txt")
-    //          withVenv{
-    //            runPytest("--numprocesses=8 --testlevel=${params.TEST_LEVEL})
-    //          }
-    //        } // dir
-    //      } // withTools
-    //  } // steps
-    //  post
-    //  {
-    //    failure
-    //    {
-    //      //archiveArtifacts artifacts: "${REPO}/tests/logs/*.txt", fingerprint: true, allowEmptyArchive: true
-    //    }
-    //  }
-    //}
+    stage('Tests')
+    {
+     steps {
+         withTools(params.TOOLS_VERSION) {
+           clone_test_deps()
+           dir("${REPO}/tests") {
+             createVenv(reqFile: "requirements.txt")
+             xcoreBuild()
+             withVenv{
+               runPytest("--numprocesses=16 --testlevel=${params.TEST_LEVEL})
+             }
+           } // dir
+         } // withTools
+     } // steps
+     post
+     {
+       failure
+       {
+         //archiveArtifacts artifacts: "${REPO}/tests/logs/*.txt", fingerprint: true, allowEmptyArchive: true
+       }
+     }
+    }
 
     stage("Archive")
     {
